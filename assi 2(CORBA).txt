@@ -1,0 +1,100 @@
+//run this command after you create IDl file 
+idlj -fall Reverse.idl
+
+//compile All files
+javac *.java ReverseModule/*.java
+
+terminal 1- tnameserv -ORBInitialPort 1050
+terminal 2- java ReverseServer -ORBInitialPort 1050 -ORBInitialHost localhost
+terminal 3- java ReverseClient -ORBInitialPort 1050 -ORBInitialHost localhost
+---------------------------------------
+Reverse.idl-CORBA supports communication between programs written in different languages (Java, C++, Python, etc.).
+To do that, we need a common way to describe the methods used in the program — that's what the .idl file does.
+
+//Reverse.idl
+module ReverseModule {
+  interface Reverse {
+    string reverse_string(in string str);
+  };
+};
+
+
+//ReverseImpl.java
+import ReverseModule.ReversePOA;
+
+class ReverseImpl extends ReversePOA {
+    ReverseImpl() {
+        super();
+        System.out.println("Reverse Object Created");
+    }
+
+    public String reverse_string(String name) {
+        StringBuffer str = new StringBuffer(name);
+        str.reverse();
+        return "Server Send " + str.toString();
+    }
+}
+
+//ReverseServer.java
+import ReverseModule.*;
+import org.omg.CORBA.*;
+import org.omg.CosNaming.*;
+import org.omg.CosNaming.NamingContextPackage.*;
+import org.omg.PortableServer.*;
+
+public class ReverseServer {
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+
+            POA rootpoa = POAHelper.narrow(orb.resolve_initial_references("RootPOA"));
+            rootpoa.the_POAManager().activate();
+
+            ReverseImpl rvr = new ReverseImpl();
+            org.omg.CORBA.Object ref = rootpoa.servant_to_reference(rvr);
+            Reverse h_ref = ReverseHelper.narrow(ref);
+
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+            String name = "Reverse";
+            NameComponent path[] = ncRef.to_name(name);
+            ncRef.rebind(path, h_ref);
+
+            System.out.println("Reverse Server ready and waiting...");
+            orb.run();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+//ReverseClient.java
+import ReverseModule.*;
+import org.omg.CORBA.*;
+import org.omg.CosNaming.*;
+import java.io.*;
+
+public class ReverseClient {
+    public static void main(String args[]) {
+        try {
+            ORB orb = ORB.init(args, null);
+            org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+            NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+            Reverse reverseImpl = ReverseHelper.narrow(ncRef.resolve_str("Reverse"));
+
+            System.out.print("Enter String: ");
+            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            String input = br.readLine();
+
+            String result = reverseImpl.reverse_string(input);
+            System.out.println(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+

@@ -1,0 +1,81 @@
+sudo apt install openjdk-8-jdk
+
+create 4 notepad = 1) AddClient.java
+                   2) AddServer.java
+                   3) AddServerImpl.java
+                   4) AddServerIntf.java
+on terminal 1           
+javac *.java        
+----------------------
+on terminal 2
+rmiregistry
+----------------------
+on terminal 3
+java AddServer
+------------------------
+on terminal 4
+java AddClient 127.0.0.1 5 8
+--------------------
+
+//AddClient.java  - We create this so the client can connect to the server and call the add method.
+import java.rmi.*;
+
+public class AddClient {
+    public static void main(String args[]) {
+        try {
+            // Get reference to the remote object
+            String addServerURL = "rmi://" + args[0] + "/AddServer";
+            AddServerIntf addServerIntf = (AddServerIntf) Naming.lookup(addServerURL);
+
+            System.out.println("The first number is: " + args[1]);
+            double d1 = Double.parseDouble(args[1]);
+
+            System.out.println("The second number is: " + args[2]);
+            double d2 = Double.parseDouble(args[2]);
+
+            // Invoke remote method
+            System.out.println("The sum is: " + addServerIntf.add(d1, d2));
+        } catch (Exception e) {
+            System.out.println("Exception: " + e);
+        }
+    }
+}
+
+
+//AddServer.java  - We create this to start the server and register the object so the client can find it.
+import java.rmi.*;
+
+public class AddServer {
+    public static void main(String args[]) {
+        try {
+            AddServerImpl addServerImpl = new AddServerImpl();
+            Naming.rebind("AddServer", addServerImpl);
+            System.out.println("AddServer is ready.");
+        } catch (Exception e) {
+            System.out.println("Exception: " + e);
+        }
+    }
+}
+
+//AddServerImpl.java - We create this to write the actual logic for the method add().
+import java.rmi.*;
+import java.rmi.server.*;
+
+public class AddServerImpl extends UnicastRemoteObject implements AddServerIntf {
+    public AddServerImpl() throws RemoteException {
+        super();
+    }
+
+    public double add(double d1, double d2) throws RemoteException {
+        return d1 + d2;
+    }
+}
+
+//AddServerIntf.java - We create this because we need to declare the method that the client will use to talk to the server.
+import java.rmi.*;
+
+public interface AddServerIntf extends Remote {
+    double add(double d1, double d2) throws RemoteException;
+}
+
+
